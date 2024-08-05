@@ -112,6 +112,9 @@ static json array(_self) {
                         expect(COMMA);
                 start = false;
 
+                if (peek_type(self, RSQUAREB) && self->opts.recover_errors)
+                        continue;
+
                 json j = value(self);
                 if (j.type == JSON_ERROR)
                         return j;
@@ -166,6 +169,9 @@ static json object(_self) {
                 if (!start)
                         expect(COMMA);
                 start = false;
+
+                if (peek_type(self, RBRACE) && self->opts.recover_errors)
+                        continue;
 
                 expect(STRING);
                 token key = prev(self);

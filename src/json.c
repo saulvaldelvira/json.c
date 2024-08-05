@@ -8,6 +8,7 @@
 static const
 struct json_options DEFAULT_OPTS = {
         .max_depth = 500,
+        .recover_errors = false,
 };
 
 static INLINE

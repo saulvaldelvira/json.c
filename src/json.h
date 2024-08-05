@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef struct json json;
 
@@ -39,6 +40,7 @@ struct json {
 
 typedef struct json_options {
         int max_depth;
+        bool recover_errors;
 } json_options;
 
 json json_deserialize(char *text);
