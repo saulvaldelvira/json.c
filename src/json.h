@@ -33,13 +33,26 @@ struct json {
                 json_array array;
                 char *string;
                 double number;
+                int error_code;
         };
 };
 
-json json_deserialize(char *text, size_t len);
+typedef struct json_options {
+        int max_depth;
+} json_options;
+
+json json_deserialize(char *text);
+json json_deserialize_with_options(char *text, struct json_options opts);
 
 void json_print(json j);
 
 void json_free(json j);
+
+enum json_error {
+        JSON_ERROR_ERROR = -0xE001,
+        JSON_ERROR_MAX_RECURSION = -0xE002,
+};
+
+const char* json_get_error_msg(int code);
 
 #endif

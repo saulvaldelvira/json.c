@@ -7,20 +7,22 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <string.h>
-#include "array.h"
+#include "util.h"
 
 struct parser {
         token *toks;
         char *text;
         int curr;
         unsigned int n_errors;
+        struct json_options opts;
+        int depth;
 };
 
 #define _self struct parser *self
 
-static inline bool is_finished(_self) { return self->toks[self->curr].type == EOF || self->n_errors > 0; }
+static INLINE bool is_finished(_self) { return self->toks[self->curr].type == EOF || self->n_errors > 0; }
 
-static inline void error (_self, const char *fmt, ...){
+static void error (_self, const char *fmt, ...){
 	va_list ap;
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
@@ -28,7 +30,7 @@ static inline void error (_self, const char *fmt, ...){
         self->n_errors++;
 }
 
-static inline token prev(_self) {
+static INLINE token prev(_self) {
         return self->toks[self->curr - 1];
 }
 
@@ -41,7 +43,7 @@ static inline token prev(_self) {
         return false;
 }
 
-static inline bool peek_type(_self,int type) {
+static INLINE bool peek_type(_self,int type) {
         if (is_finished(self)) return false;
         return self->toks[self->curr].type == type;
 }
@@ -58,10 +60,11 @@ static json object(_self);
 static json string(_self);
 static json keyword(_self);
 
-json parse(char *_txt, token *_toks) {
+json parse(char *_txt, token *_toks, struct json_options opts) {
         struct parser parser = {
                 .text = _txt,
                 .toks = _toks,
+                .opts = opts,
         };
         json json = value(&parser);
         if (parser.n_errors > 0)
@@ -70,12 +73,24 @@ json parse(char *_txt, token *_toks) {
 }
 
 static json value(_self) {
-        if (match_next(self,LSQUAREB))
-                return array(self);
+        if (self->depth > self->opts.max_depth) {
+                return (json) { .type = JSON_ERROR,
+                                .error_code = JSON_ERROR_MAX_RECURSION };
+        }
+        if (match_next(self,LSQUAREB)) {
+                self->depth++;
+                json j = array(self);
+                self->depth--;
+                return j;
+        }
         if (match_next(self,NUMBER))
                 return number(self);
-        if (match_next(self,LBRACE))
-                return object(self);
+        if (match_next(self,LBRACE)) {
+                self->depth++;
+                json j = object(self);
+                self->depth--;
+                return j;
+        }
         if (match_next(self,STRING))
                 return string(self);
         if (match_next(self,KEYWORD))
@@ -98,6 +113,8 @@ static json array(_self) {
                 start = false;
 
                 json j = value(self);
+                if (j.type == JSON_ERROR)
+                        return j;
                 ARR_PUSH(arr, j);
         }
 
@@ -153,12 +170,16 @@ static json object(_self) {
                 expect(STRING);
                 token key = prev(self);
                 expect(COLON);
-                json *j = malloc(sizeof(json));
-                *j = value(self);
+                json j = value(self);
+                if (j.type == JSON_ERROR)
+                        return j;
+
+                json *val = malloc(sizeof(json));
+                *val = j;
 
                 pair p = {
                         .key = unwrap_str(self,key),
-                        .val = j
+                        .val = val
                 };
                 ARR_PUSH(arr, p);
         }
@@ -172,7 +193,7 @@ static json object(_self) {
                 .object = (json_object) {
                         .elems = arr.elems,
                         .elems_len = arr.curr
-                }
+               }
         };
 }
 

@@ -12,7 +12,7 @@ typedef struct token {
         int type;
 } token;
 
-token* tokenize(char *text, unsigned long size);
+token* tokenize(char *text);
 char* get_type_repr(int type);
 
 #endif

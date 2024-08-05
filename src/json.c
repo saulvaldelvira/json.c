@@ -3,12 +3,27 @@
 #include "parser.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "util.h"
 
-json json_deserialize(char *text, size_t len) {
-        token *tokens = tokenize(text, len);
-        json json = parse(text, tokens);
+static const
+struct json_options DEFAULT_OPTS = {
+        .max_depth = 500,
+};
+
+static INLINE
+json __deserialize(char *text, struct json_options opts) {
+        token *tokens = tokenize(text);
+        json json = parse(text, tokens, opts);
         free(tokens);
         return json;
+}
+
+json json_deserialize(char *text) {
+        return __deserialize(text, DEFAULT_OPTS);
+}
+
+json json_deserialize_with_options(char *text, struct json_options opts) {
+        return __deserialize(text, opts);
 }
 
 void json_print(json j) {
@@ -73,4 +88,14 @@ void json_free(json j) {
         default:
           break;
         }
+}
+
+const char* json_get_error_msg(int code) {
+        switch (code) {
+                case JSON_ERROR_MAX_RECURSION:
+                        return "Max recursion reached";
+                default:
+                        break;
+        }
+        return "";
 }

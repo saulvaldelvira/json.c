@@ -1,5 +1,11 @@
-#ifndef _ARRAY_H_
-#define _ARRAY_H_
+#ifndef _UTIL_H_
+#define _UTIL_H_
+
+#ifdef __GNUC__
+#       define INLINE inline __attribute__((always_inline))
+#else
+#       define INLINE inline
+#endif
 
 #include <stdlib.h>
 

@@ -4,13 +4,14 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdarg.h>
-#include "array.h"
+#include <string.h>
+#include "util.h"
 
 ARR_DEF(token);
 
 struct lexer {
         char *text;
-        int curr, start, text_len;
+        int curr, start;
         __token_array tokens;
         unsigned int n_errors;
 };
@@ -18,7 +19,7 @@ struct lexer {
 #define _self struct lexer *self
 
 
-static inline bool is_finished(_self) { return self->curr >= self->text_len || self->n_errors > 0; }
+static INLINE bool is_finished(_self) { return self->text[self->curr] == '\0' || self->n_errors > 0; }
 
 static char advance(_self);
 static char peek(_self);
@@ -29,10 +30,9 @@ static void number(_self);
 static void string(_self);
 static void keyword(_self);
 
-token* tokenize(char *_text, unsigned long size) {
+token* tokenize(char *_text) {
         struct lexer lexer = {
-                .text = _text,
-                .text_len = size,
+                .text = _text
         };
         while (!is_finished(&lexer)) {
                 parse_next(&lexer);
@@ -44,7 +44,7 @@ token* tokenize(char *_text, unsigned long size) {
         return ARR_SHINK_TO_FIT(lexer.tokens);
 }
 
-static inline void error (_self, const char *fmt, ...){
+static void error (_self, const char *fmt, ...){
 	va_list ap;
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);

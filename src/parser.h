@@ -4,6 +4,6 @@
 #include "lexer.h"
 #include "json.h"
 
-json parse(char *_txt, token *toks);
+json parse(char *_txt, token *toks, struct json_options opts);
 
 #endif
