@@ -26,6 +26,6 @@
         } while (0)
 
 #define ARR_SHINK_TO_FIT(arr) \
-        ( arr.elems = realloc(arr.elems, arr.curr * sizeof(*arr.elems)) )
+        ( arr.elems ? arr.elems = realloc(arr.elems, arr.curr * sizeof(*arr.elems)) : NULL )
 
 #endif

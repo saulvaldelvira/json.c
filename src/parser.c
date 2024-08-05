@@ -16,13 +16,14 @@ struct parser {
         unsigned int n_errors;
         struct json_options opts;
         int depth;
+        bool validate;
 };
 
 #define _self struct parser *self
 
 static INLINE bool is_finished(_self) { return self->toks[self->curr].type == EOF || self->n_errors > 0; }
 
-static void error (_self, const char *fmt, ...){
+static void error (_self, FILE *f, const char *fmt, ...){
 	va_list ap;
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
@@ -48,10 +49,17 @@ static INLINE bool peek_type(_self,int type) {
         return self->toks[self->curr].type == type;
 }
 
-#define expect(_t) do { \
-        if (!match_next(self,_t)) \
-                error(self,"[%d] Expected %s found %s\n", __LINE__, get_type_repr(_t), get_type_repr(self->toks[self->curr].type)); \
-} while (0)
+static bool expect(_self, int type, int line) {
+        if (!match_next(self,type)) {
+                FILE *out = self->opts.debug_output_file;
+                if (out)
+                        error(self, out, "[%d] Expected %s found %s\n", line, get_type_repr(type), get_type_repr(self->toks[self->curr].type));
+                return false;
+        }
+        return true;
+}
+
+#define EXPECT(_t) do { if (! expect(self, _t, __LINE__) ) { CLEANUP() ; return ERROR(JSON_ERROR_UNEXPECTED_TOKEN); } } while (0)
 
 static json value(_self);
 static json array(_self);
@@ -60,11 +68,12 @@ static json object(_self);
 static json string(_self);
 static json keyword(_self);
 
-json parse(char *_txt, token *_toks, struct json_options opts) {
+json parse(char *_txt, token *_toks, struct json_options opts, bool validate) {
         struct parser parser = {
                 .text = _txt,
                 .toks = _toks,
                 .opts = opts,
+                .validate = validate,
         };
         json json = value(&parser);
         if (parser.n_errors > 0)
@@ -95,33 +104,45 @@ static json value(_self) {
                 return string(self);
         if (match_next(self,KEYWORD))
                 return keyword(self);
-        error(self, "Unknown %d\n", self->toks[self->curr].type);
         return (json) {
-                .type = JSON_ERROR
+                .type = JSON_ERROR,
+                .error_code = JSON_ERROR_UNEXPECTED_TOKEN,
         };
 }
 
 ARR_DEF(json);
 
+#define ERROR(code) (json) { .type = JSON_ERROR, .error_code = code }
+
 static json array(_self) {
         __json_array arr = {0};
+
+#define CLEANUP() \
+                for (unsigned long i = 0; i < arr.curr; i++) \
+                        json_free(arr.elems[i]); \
+                free(arr.elems);
 
         bool start = true;
         while (!(peek_type(self, RSQUAREB) || is_finished(self))) {
                 if (!start)
-                        expect(COMMA);
+                        EXPECT(COMMA);
                 start = false;
 
                 if (peek_type(self, RSQUAREB) && self->opts.recover_errors)
                         continue;
 
                 json j = value(self);
-                if (j.type == JSON_ERROR)
+                if (j.type == JSON_ERROR) {
+                        CLEANUP();
                         return j;
+                }
+                if (self->validate)
+                        continue;
+
                 ARR_PUSH(arr, j);
         }
 
-        expect(RSQUAREB);
+        EXPECT(RSQUAREB);
 
         json *elems = ARR_SHINK_TO_FIT(arr);
 
@@ -132,6 +153,8 @@ static json array(_self) {
                         .len = arr.curr,
                 }
         };
+
+#undef CLEANUP
 }
 
 static json number(_self) {
@@ -144,6 +167,8 @@ static json number(_self) {
 }
 
  char* unwrap_str(_self, token t) {
+         if (self->validate)
+                 return NULL;
         size_t len = t.end - t.start - 2;
         char *str = malloc(len + 1);
         strncpy(str, self->text + t.start + 1, len);
@@ -164,21 +189,35 @@ ARR_DEF(pair);
 static json object(_self) {
         __pair_array arr = {0};
 
+#define CLEANUP() \
+                for (unsigned long i = 0; i < arr.curr; i++) { \
+                        json_free(*arr.elems[i].val); \
+                        free(arr.elems[i].key); \
+                        free(arr.elems[i].val); \
+                } \
+                free(arr.elems);
+
         bool start = true;
         while (!peek_type(self,RBRACE) && !is_finished(self)) {
-                if (!start)
-                        expect(COMMA);
+                if (!start) {
+                        EXPECT(COMMA);
+                }
                 start = false;
 
                 if (peek_type(self, RBRACE) && self->opts.recover_errors)
                         continue;
 
-                expect(STRING);
+                EXPECT(STRING);
                 token key = prev(self);
-                expect(COLON);
+                EXPECT(COLON);
                 json j = value(self);
-                if (j.type == JSON_ERROR)
+                if (j.type == JSON_ERROR) {
+                        CLEANUP();
                         return j;
+                }
+
+                if (self->validate)
+                        continue;
 
                 json *val = malloc(sizeof(json));
                 *val = j;
@@ -190,7 +229,7 @@ static json object(_self) {
                 ARR_PUSH(arr, p);
         }
 
-        expect(RBRACE);
+        EXPECT(RBRACE);
 
         ARR_SHINK_TO_FIT(arr);
 
@@ -201,6 +240,8 @@ static json object(_self) {
                         .elems_len = arr.curr
                }
         };
+
+#undef CLEANUP
 }
 
 static json keyword(_self) {
@@ -216,7 +257,9 @@ static json keyword(_self) {
 
 #undef cmp
 
-        error(self, "Unknown keyword: %*s\n", t.end - t.start, txt);
-        return (json){ .type = JSON_ERROR };
+        FILE *f = self->opts.debug_output_file;
+        if (f)
+                error(self, f, "Unknown keyword: %*s\n", t.end - t.start, txt);
+        return ERROR(JSON_ERROR_UNKNOWN_KEYWORD);
 }
 

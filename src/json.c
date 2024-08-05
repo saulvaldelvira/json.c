@@ -9,16 +9,20 @@ static const
 struct json_options DEFAULT_OPTS = {
         .max_depth = 500,
         .recover_errors = false,
+        .debug_output_file = NULL,
 };
 
 static INLINE
 json __deserialize(char *text, struct json_options opts) {
         token *tokens = tokenize(text);
-        json json = parse(text, tokens, opts);
+        json json = parse(text, tokens, opts, false);
         free(tokens);
         return json;
 }
 
+/**
+ * Deserializes the given input into a json structure
+ */
 json json_deserialize(char *text) {
         return __deserialize(text, DEFAULT_OPTS);
 }
@@ -27,6 +31,22 @@ json json_deserialize_with_options(char *text, struct json_options opts) {
         return __deserialize(text, opts);
 }
 
+/**
+ * Validates that the given JSON input is valid.
+ * This is the same as calling json_deserialize and then checking
+ * if the returned value is of type JSON_ERROR, but skips any unnecesary
+ * memory allocations.
+ */
+bool json_validate(char *text) {
+        token *tokens = tokenize(text);
+        json json = parse(text, tokens, DEFAULT_OPTS, true);
+        free(tokens);
+        return json.type != JSON_ERROR;
+}
+
+/**
+ * Prints the json structure
+ */
 void json_print(json j) {
         switch (j.type) {
         case JSON_ARRAY:
@@ -68,6 +88,9 @@ void json_print(json j) {
         }
 }
 
+/**
+ * Frees all memory associated with this json structure
+ */
 void json_free(json j) {
         switch (j.type) {
         case JSON_ARRAY:
@@ -91,12 +114,19 @@ void json_free(json j) {
         }
 }
 
+/**
+ * Returns a description of the given error code
+ */
 const char* json_get_error_msg(int code) {
         switch (code) {
                 case JSON_ERROR_MAX_RECURSION:
                         return "Max recursion reached";
+                case JSON_ERROR_UNEXPECTED_TOKEN:
+                        return "Unexpected token";
+                case JSON_ERROR_UNKNOWN_KEYWORD:
+                        return "Unknwonwn keyword";
                 default:
                         break;
         }
-        return "";
+        return "Unknown error code";
 }

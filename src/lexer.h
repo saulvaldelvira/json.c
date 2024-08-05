@@ -4,7 +4,7 @@
 enum {
         LBRACE, RBRACE, LSQUAREB, RSQUAREB,
         NUMBER, STRING, COMMA, COLON, KEYWORD,
-        DOT, EOF
+        DOT, END_OF_FILE
 };
 
 typedef struct token {
