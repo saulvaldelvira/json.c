@@ -26,7 +26,7 @@ static INLINE bool is_finished(_self) { return self->toks[self->curr].type == EO
 static void error (_self, FILE *f, const char *fmt, ...){
 	va_list ap;
 	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
+	vfprintf(f, fmt, ap);
 	va_end(ap);
         self->n_errors++;
 }
