@@ -1,6 +1,7 @@
 #include "json.h"
 #include "lexer.h"
 #include "parser.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "util.h"
@@ -14,6 +15,7 @@ struct json_options DEFAULT_OPTS = {
 
 static INLINE
 json __deserialize(char *text, struct json_options opts) {
+        assert(text);
         token *tokens = tokenize(text);
         json json = parse(text, tokens, opts, false);
         free(tokens);
