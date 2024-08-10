@@ -171,8 +171,33 @@ static json number(_self) {
                  return NULL;
         size_t len = t.end - t.start - 2;
         char *str = malloc(len + 1);
-        strncpy(str, self->text + t.start + 1, len);
-        str[len] = '\0';
+
+        #define escp(c,rep) case c: \
+                *dst = rep; \
+                break;
+
+        char *dst = str;
+        char *src = self->text + t.start + 1;
+        for (size_t i = 0; i < len; i++) {
+                if (*src == '\\') {
+                        src++;
+                        i++;
+                        switch (*src) {
+                        escp('n', '\n')
+                        escp('r', '\r')
+                        escp('b', '\b')
+                        escp('f', '\f')
+                        escp('"', '\"')
+                        escp('\'', '\'')
+                        escp('\\', '\\')
+                        }
+                } else {
+                        *dst = *src;
+                }
+                dst++;
+                src++;
+        }
+        *dst = '\0';
         return str;
 }
 
