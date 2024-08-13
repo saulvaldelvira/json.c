@@ -61,34 +61,34 @@ static bool expect(_self, int type, int line) {
 
 #define EXPECT(_t) do { if (! expect(self, _t, __LINE__) ) { CLEANUP() ; return ERROR(JSON_ERROR_UNEXPECTED_TOKEN); } } while (0)
 
-static json value(_self);
-static json array(_self);
-static json number(_self);
-static json object(_self);
-static json string(_self);
-static json keyword(_self);
+static json_t value(_self);
+static json_t array(_self);
+static json_t number(_self);
+static json_t object(_self);
+static json_t string(_self);
+static json_t keyword(_self);
 
-json parse(char *_txt, token *_toks, struct json_options opts, bool validate) {
+json_t parse(char *_txt, token *_toks, struct json_options opts, bool validate) {
         struct parser parser = {
                 .text = _txt,
                 .toks = _toks,
                 .opts = opts,
                 .validate = validate,
         };
-        json json = value(&parser);
+        json_t json = value(&parser);
         if (parser.n_errors > 0)
                 json.type = JSON_ERROR;
         return json;
 }
 
-static json value(_self) {
+static json_t value(_self) {
         if (self->depth > self->opts.max_depth) {
-                return (json) { .type = JSON_ERROR,
+                return (json_t) { .type = JSON_ERROR,
                                 .error_code = JSON_ERROR_MAX_RECURSION };
         }
         if (match_next(self,LSQUAREB)) {
                 self->depth++;
-                json j = array(self);
+                json_t j = array(self);
                 self->depth--;
                 return j;
         }
@@ -96,7 +96,7 @@ static json value(_self) {
                 return number(self);
         if (match_next(self,LBRACE)) {
                 self->depth++;
-                json j = object(self);
+                json_t j = object(self);
                 self->depth--;
                 return j;
         }
@@ -104,18 +104,18 @@ static json value(_self) {
                 return string(self);
         if (match_next(self,KEYWORD))
                 return keyword(self);
-        return (json) {
+        return (json_t) {
                 .type = JSON_ERROR,
                 .error_code = JSON_ERROR_UNEXPECTED_TOKEN,
         };
 }
 
-ARR_DEF(json);
+ARR_DEF(json_t);
 
-#define ERROR(code) (json) { .type = JSON_ERROR, .error_code = code }
+#define ERROR(code) (json_t) { .type = JSON_ERROR, .error_code = code }
 
-static json array(_self) {
-        __json_array arr = {0};
+static json_t array(_self) {
+        __json_t_array arr = {0};
 
 #define CLEANUP() \
                 for (unsigned long i = 0; i < arr.curr; i++) \
@@ -131,7 +131,7 @@ static json array(_self) {
                 if (peek_type(self, RSQUAREB) && self->opts.recover_errors)
                         continue;
 
-                json j = value(self);
+                json_t j = value(self);
                 if (j.type == JSON_ERROR) {
                         CLEANUP();
                         return j;
@@ -144,11 +144,11 @@ static json array(_self) {
 
         EXPECT(RSQUAREB);
 
-        json *elems = ARR_SHINK_TO_FIT(arr);
+        json_t *elems = ARR_SHINK_TO_FIT(arr);
 
-        return (json) {
+        return (json_t) {
                 .type = JSON_ARRAY,
-                .array = (json_array) {
+                .array = (json_array_t) {
                         .elems = elems,
                         .len = arr.curr,
                 }
@@ -157,10 +157,10 @@ static json array(_self) {
 #undef CLEANUP
 }
 
-static json number(_self) {
+static json_t number(_self) {
         char *t = self->text + prev(self).start;
         double d = atof(t);
-        return (json) {
+        return (json_t) {
                 .type = JSON_NUMBER,
                 .number = d
         };
@@ -201,9 +201,9 @@ static json number(_self) {
         return str;
 }
 
-static json string(_self) {
+static json_t string(_self) {
         token t = prev(self);
-        return (json) {
+        return (json_t) {
                 .type = JSON_STRING,
                 .string = unwrap_str(self,t)
         };
@@ -211,7 +211,7 @@ static json string(_self) {
 
 ARR_DEF(pair);
 
-static json object(_self) {
+static json_t object(_self) {
         __pair_array arr = {0};
 
 #define CLEANUP() \
@@ -235,7 +235,7 @@ static json object(_self) {
                 EXPECT(STRING);
                 token key = prev(self);
                 EXPECT(COLON);
-                json j = value(self);
+                json_t j = value(self);
                 if (j.type == JSON_ERROR) {
                         CLEANUP();
                         return j;
@@ -244,7 +244,7 @@ static json object(_self) {
                 if (self->validate)
                         continue;
 
-                json *val = malloc(sizeof(json));
+                json_t *val = malloc(sizeof(json_t));
                 *val = j;
 
                 pair p = {
@@ -258,9 +258,9 @@ static json object(_self) {
 
         ARR_SHINK_TO_FIT(arr);
 
-        return (json) {
+        return (json_t) {
                 .type = JSON_OBJECT,
-                .object = (json_object) {
+                .object = (json_object_t) {
                         .elems = arr.elems,
                         .elems_len = arr.curr
                }
@@ -269,12 +269,12 @@ static json object(_self) {
 #undef CLEANUP
 }
 
-static json keyword(_self) {
+static json_t keyword(_self) {
         token t = prev(self);
         char *txt = self->text + t.start;
         size_t len = t.end - t.start;
 #define cmp(w, val) if ( strncmp(txt, w, len) == 0 ) \
-        return (json) { .type =  val };
+        return (json_t) { .type =  val };
 
         cmp("true", JSON_TRUE);
         cmp("false", JSON_FALSE);

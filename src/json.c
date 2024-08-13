@@ -14,30 +14,30 @@ struct json_options DEFAULT_OPTS = {
 };
 
 static INLINE
-json __deserialize(char *text, struct json_options opts) {
+json_t __deserialize(char *text, struct json_options opts) {
         assert(text);
         token *tokens = tokenize(text);
-        json json = parse(text, tokens, opts, false);
+        json_t json = parse(text, tokens, opts, false);
         free(tokens);
         return json;
 }
 
-json json_deserialize(char *text) {
+json_t json_deserialize(char *text) {
         return __deserialize(text, DEFAULT_OPTS);
 }
 
-json json_deserialize_with_options(char *text, struct json_options opts) {
+json_t json_deserialize_with_options(char *text, struct json_options opts) {
         return __deserialize(text, opts);
 }
 
 bool json_validate(char *text) {
         token *tokens = tokenize(text);
-        json json = parse(text, tokens, DEFAULT_OPTS, true);
+        json_t json = parse(text, tokens, DEFAULT_OPTS, true);
         free(tokens);
         return json.type != JSON_ERROR;
 }
 
-void json_print(json j) {
+void json_print(json_t j) {
         switch (j.type) {
         case JSON_ARRAY:
                 printf("[");
@@ -78,7 +78,7 @@ void json_print(json j) {
         }
 }
 
-void json_free(json j) {
+void json_free(json_t j) {
         switch (j.type) {
         case JSON_ARRAY:
                 for (unsigned long i = 0; i < j.array.len; i++)
