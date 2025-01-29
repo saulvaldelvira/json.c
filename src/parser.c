@@ -24,6 +24,7 @@ struct parser {
 static INLINE bool is_finished(_self) { return self->toks[self->curr].type == EOF || self->n_errors > 0; }
 
 static void error (_self, FILE *f, const char *fmt, ...){
+        fprintf(stderr, "[PARSER] ERROR: ");
 	va_list ap;
 	va_start(ap, fmt);
 	vfprintf(f, fmt, ap);

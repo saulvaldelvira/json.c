@@ -1,6 +1,8 @@
 #ifndef _LEXER_H_
 #define _LEXER_H_
 
+#include <stdbool.h>
+
 enum {
         LBRACE, RBRACE, LSQUAREB, RSQUAREB,
         NUMBER, STRING, COMMA, COLON, KEYWORD,
@@ -12,7 +14,7 @@ typedef struct token {
         int type;
 } token;
 
-token* tokenize(char *text);
+token* tokenize(char *_text, bool *has_error);
 char* get_type_repr(int type);
 
 #endif

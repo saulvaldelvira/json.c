@@ -30,10 +30,11 @@ static void number(_self);
 static void string(_self);
 static void keyword(_self);
 
-token* tokenize(char *_text) {
+token* tokenize(char *_text, bool *has_error) {
         struct lexer lexer = {
                 .text = _text
         };
+
         while (!is_finished(&lexer)) {
                 parse_next(&lexer);
         }
@@ -41,10 +42,13 @@ token* tokenize(char *_text) {
         token t = {.type = EOF};
         ARR_PUSH(lexer.tokens, t);
 
+        *has_error = lexer.n_errors > 0;
+
         return ARR_SHINK_TO_FIT(lexer.tokens);
 }
 
 static void error (_self, const char *fmt, ...){
+        fprintf(stderr, "[LEXER] ERROR: ");
 	va_list ap;
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
@@ -112,7 +116,7 @@ static void number(_self) {
 
 static void string(_self) {
         bool scaping = false;
-        for (;;) {
+        while (!is_finished(self)) {
                 if (peek(self) == '"' && !scaping)
                         break;
                 scaping = peek(self) == '\\';

@@ -16,8 +16,14 @@ struct json_options DEFAULT_OPTS = {
 static INLINE
 json_t __deserialize(char *text, struct json_options opts) {
         assert(text);
-        token *tokens = tokenize(text);
-        json_t json = parse(text, tokens, opts, false);
+        json_t json = { .type = JSON_ERROR };
+        bool has_error;
+
+        token *tokens = tokenize(text, &has_error);
+        if (!has_error) {
+                json = parse(text, tokens, opts, false);
+        }
+
         free(tokens);
         return json;
 }
@@ -31,10 +37,17 @@ json_t json_deserialize_with_options(char *text, struct json_options opts) {
 }
 
 bool json_validate(char *text) {
-        token *tokens = tokenize(text);
+        bool has_error;
+        token *tokens = tokenize(text, &has_error);
+        if (has_error)
+                goto cleanup;
+
         json_t json = parse(text, tokens, DEFAULT_OPTS, true);
+        has_error = json.type != JSON_ERROR;
+
+cleanup:
         free(tokens);
-        return json.type != JSON_ERROR;
+        return has_error;
 }
 
 void json_print(json_t j) {
