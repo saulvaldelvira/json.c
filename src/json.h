@@ -100,4 +100,6 @@ typedef enum json_error {
  */
 const char* json_get_error_msg(int code);
 
+bool json_eq(json_t *left, json_t *right);
+
 #endif

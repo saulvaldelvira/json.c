@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "util.h"
 
 static const
@@ -126,4 +127,32 @@ const char* json_get_error_msg(int code) {
                         break;
         }
         return "Unknown error code";
+}
+
+static bool __cmp_json_obj(json_object_t left, json_object_t  right) {
+        if (left.elems_len != right.elems_len)
+                return false;
+
+        for (int i = 0; i < left.elems_len; i++) {
+                struct pair val1 = left.elems[i];
+                struct pair val2 = right.elems[i];
+                if (strcmp(val1.key, val2.key) != 0)
+                        return false;
+                if (!json_eq(val1.val, val2.val))
+                        return false;
+        }
+
+        return true;
+}
+
+bool json_eq(json_t *left, json_t *right) {
+        if (left->type != right->type)
+                return false;
+
+        switch (left->type) {
+        case JSON_OBJECT:
+                return __cmp_json_obj(left->object, right->object);
+        case JSON_NUMBER:
+                return left->number == right->number;
+        }
 }

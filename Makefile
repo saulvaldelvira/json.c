@@ -2,7 +2,7 @@
 
 BIN = bin
 
-CFILES = $(shell find . -name '*.c')
+CFILES = $(shell find src -name '*.c')
 OFILES = $(patsubst %.c,%.o,$(CFILES))
 
 AR = ar
@@ -36,6 +36,9 @@ uninstall:
 	  @ rm -f $(INSTALL_PATH)/lib/libjson*
 	  @ echo "RM $(INSTALL_PATH)/include/json.h"
 	  @ rm -rf $(INSTALL_PATH)/include/json.h
+
+test: libs
+	@ gcc -L $(BIN) tests/*.c -ljson-static -o $(BIN)/test && $(BIN)/test
 
 .c.o:
 	@ echo " CC $@"
