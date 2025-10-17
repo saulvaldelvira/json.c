@@ -2,6 +2,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include <assert.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -133,7 +134,7 @@ static bool __cmp_json_obj(json_object_t left, json_object_t  right) {
         if (left.elems_len != right.elems_len)
                 return false;
 
-        for (int i = 0; i < left.elems_len; i++) {
+        for (size_t i = 0; i < left.elems_len; i++) {
                 struct pair val1 = left.elems[i];
                 struct pair val2 = right.elems[i];
                 if (strcmp(val1.key, val2.key) != 0)
@@ -154,5 +155,7 @@ bool json_eq(json_t *left, json_t *right) {
                 return __cmp_json_obj(left->object, right->object);
         case JSON_NUMBER:
                 return left->number == right->number;
+        default:
+                return false;
         }
 }

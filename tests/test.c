@@ -14,9 +14,11 @@
 bool array_cmp(json_array_t arr, int *expected, size_t expected_len) {
         if (arr.len != expected_len)
                 return false;
-        for (int i = 0; i < arr.len; i++) {
-
+        for (size_t i = 0; i < arr.len; i++) {
+                if (arr.elems[i].type != JSON_NUMBER || arr.elems[i].number != expected[i])
+                        return false;
         }
+        return true;
 }
 
 void test_deserialize(void) {
